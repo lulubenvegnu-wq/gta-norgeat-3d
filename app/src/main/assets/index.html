@@ -1,0 +1,110 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>GTA NORGEAT</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;background:#87b9df;font-family:Arial;color:white}
+#hud{position:absolute;top:12px;left:12px;font-weight:bold;text-shadow:2px 2px 3px #000}
+#help{position:absolute;top:45px;left:12px;font-size:12px;text-shadow:2px 2px 3px #000}
+#pad{position:absolute;bottom:25px;left:25px;width:125px;height:125px;border-radius:50%;background:#ffffff55;border:2px solid #fff8;touch-action:none}
+#stick{position:absolute;left:38px;top:38px;width:45px;height:45px;border-radius:50%;background:#ffffffbb}
+#buttons{position:absolute;right:22px;bottom:30px;display:flex;flex-direction:column;gap:12px}
+button{width:75px;height:55px;border-radius:18px;border:2px solid white;background:#2229;color:white;font-weight:bold;touch-action:none}
+</style>
+</head>
+<body>
+<div id="hud">GTA NORGEAT 3D</div>
+<div id="help">Explore le village et conduis !</div>
+<div id="pad"><div id="stick"></div></div>
+<div id="buttons">
+<button id="jump">SAUT</button>
+<button id="car">VOITURE</button>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x87b9df);
+scene.fog=new THREE.Fog(0x87b9df,45,180);
+const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,300);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xffffff,0x596b43,2));
+const sun=new THREE.DirectionalLight(0xffffff,2);
+sun.position.set(-30,60,30);scene.add(sun);
+const mat=(c)=>new THREE.MeshStandardMaterial({color:c});
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(300,300),mat(0x668b4c));
+ground.rotation.x=-Math.PI/2;scene.add(ground);
+function road(x,z,w,d){
+let m=new THREE.Mesh(new THREE.BoxGeometry(w,.12,d),mat(0x454545));
+m.position.set(x,.06,z);scene.add(m);
+}
+road(0,0,9,180);road(0,-35,65,6);road(0,35,65,6);
+function house(x,z){
+let body=new THREE.Mesh(new THREE.BoxGeometry(7,5,6),mat(0xb9a17c));
+body.position.set(x,2.5,z);scene.add(body);
+let roof=new THREE.Mesh(new THREE.ConeGeometry(5.5,3.5,4),mat(0x554039));
+roof.position.set(x,6.7,z);roof.rotation.y=Math.PI/4;scene.add(roof);
+}
+for(let i=0;i<12;i++){
+let z=-55+i*10;
+house(i%2===0?-10:10,z);
+}
+function mountain(x,z,s){
+let m=new THREE.Mesh(new THREE.ConeGeometry(s, s*1.5,6),mat(0x526d62));
+m.position.set(x,s*.7,z);scene.add(m);
+}
+for(let i=0;i<18;i++)mountain((i%2?1:-1)*(35+Math.random()*35),-80+i*10,12+Math.random()*12);
+const player=new THREE.Group();
+let torso=new THREE.Mesh(new THREE.BoxGeometry(1,1.8,.55),mat(0x202c38));
+torso.position.y=1.5;player.add(torso);
+let head=new THREE.Mesh(new THREE.SphereGeometry(.38,12,10),mat(0xd0a17e));
+head.position.y=2.65;player.add(head);
+scene.add(player);player.position.set(0,0,15);
+const car=new THREE.Group();
+let base=new THREE.Mesh(new THREE.BoxGeometry(2.2,.7,4),mat(0x151b25));
+base.position.y=.65;car.add(base);
+let cabin=new THREE.Mesh(new THREE.BoxGeometry(1.7,.8,2),mat(0x34536a));
+cabin.position.set(0,1.25,-.2);car.add(cabin);
+for(let x of [-1,1])for(let z of [-1.3,1.3]){
+let wheel=new THREE.Mesh(new THREE.CylinderGeometry(.38,.38,.22,12),mat(0x111111));
+wheel.rotation.z=Math.PI/2;wheel.position.set(x,.4,z);car.add(wheel);
+}
+scene.add(car);car.position.set(4,0,15);car.visible=false;
+let driving=false,jump=0,dx=0,dz=0;
+document.getElementById('car').onclick=()=>{driving=!driving;car.visible=driving;player.visible=!driving;};
+document.getElementById('jump').ontouchstart=(e)=>{e.preventDefault();jump=.22;};
+document.getElementById('jump').onclick=()=>jump=.22;
+const pad=document.getElementById('pad'),stick=document.getElementById('stick');
+let active=false;
+function move(e){
+let r=pad.getBoundingClientRect(),t=e.touches?e.touches[0]:e;
+let x=t.clientX-r.left-r.width/2,y=t.clientY-r.top-r.height/2;
+let len=Math.hypot(x,y),scale=Math.min(1,48/(len||1));
+dx=x*scale/48;dz=y*scale/48;
+stick.style.transform=`translate(${dx*38}px,${dz*38}px)`;
+}
+pad.addEventListener('touchstart',e=>{active=true;move(e);});
+pad.addEventListener('touchmove',e=>{e.preventDefault();move(e);},{passive:false});
+pad.addEventListener('touchend',()=>{active=false;dx=dz=0;stick.style.transform='';});
+function animate(){
+requestAnimationFrame(animate);
+let obj=driving?car:player;
+obj.position.x+=dx*.13;
+obj.position.z+=dz*.13;
+if(jump>0){player.position.y+=jump;jump-=.018;}
+else player.position.y=0;
+camera.position.lerp(new THREE.Vector3(obj.position.x,7,obj.position.z+12),.08);
+camera.lookAt(obj.position.x,1,obj.position.z);
+renderer.render(scene,camera);
+}
+animate();
+onresize=()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);};
+</script>
+</body>
+</html>
